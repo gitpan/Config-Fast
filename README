@@ -1,58 +1,62 @@
 NAME
-    Config::Fast - extremely fast configuration file reader / parser
+    Config::Fast - extremely fast configuration file parser
 
 SYNOPSIS
+        # config file is simple space-separated format
+        company     Supercool, Inc.
+        support     nobody@nowhere.com
+
+        # and then in Perl
         use Config::Fast;
 
         %cf = fastconfig;
 
-        print "Please contact $cf{support} for support\n";
+        print "Thanks for visiting $cf{company}!\n";
+        print "Please contact $cf{support} for support.\n";
+
+COMPATIBILITY
+    Please note: Starting with the 1.04 release, all variables are now matched case-insensitively, and
+    returned in all lowercase in the hash returned from `fastconfig()'. If you were using `MixedCase'
+    variables, you will have to change your code to access these as `$cf{mixedcase}' from now on.
 
 DESCRIPTION
-    This module is designed to provide an extremely fast and lightweight way
-    to parse moderately complex configuration files. As such, it exports a
-    single function - "fastconfig()" - and does not provide an OO access
-    method. Still, it is fairly full-featured.
+    This module is designed to provide an extremely fast and lightweight way to parse moderately complex
+    configuration files. As such, it exports a single function - `fastconfig()' - and does not provide any OO
+    access methods. Still, it is fairly full-featured.
 
     Here's how it works:
 
         %cf = fastconfig($file, $delim);
 
-    Basically, the "fastconfig()" function returns a hash of keys and values
-    based on the directives in your configuration file. By default,
-    directives and values are separated by whitespace in the config file,
-    but this can be easily changed with the delimiter argument (see below).
+    Basically, the `fastconfig()' function returns a hash of keys and values based on the directives in your
+    configuration file. By default, directives and values are separated by whitespace in the config file, but
+    this can be easily changed with the delimiter argument (see below).
 
-    When the configuration file is read, its modification time is first
-    checked and the results cached. On each call to "fastconfig()", if the
-    config file has been changed, then the file is reread. Otherwise, the
-    cached results are returned automatically. This makes this module great
-    for "mod_perl" based modules and scripts, one of the primary reasons I
-    wrote it. Simply include this at the top of your script or inside of
+    When the configuration file is read, its modification time is first checked and the results cached. On
+    each call to `fastconfig()', if the config file has been changed, then the file is reread. Otherwise, the
+    cached results are returned automatically. This makes this module great for `mod_perl' based modules and
+    scripts, one of the primary reasons I wrote it. Simply include this at the top of your script or inside of
     your constructor function:
 
         my %cf = fastconfig('/path/to/config/file.conf');
 
-    If the file argument is omitted, then "fastconfig()" looks for a file
-    named "progname.conf" in the "../etc" directory relative to the
-    executable. For example, if you ran:
+    If the file argument is omitted, then `fastconfig()' looks for a file named `$0.conf' in the `../etc'
+    directory relative to the executable. For example, if you ran:
 
         /usr/local/bin/myapp
 
-    Then "fastconfig()" will automatically look for:
+    Then `fastconfig()' will automatically look for:
 
         /usr/local/etc/myapp.conf
 
     This is great if you're really lazy and always in a hurry, like I am.
 
-    If this doesn't work for you, simply supply a filename manually. Note
-    that filename generation does not work in "mod_perl", so you'll need to
-    supply a filename manually.
+    If this doesn't work for you, simply supply a filename manually. Note that filename generation does not
+    work in `mod_perl', so you'll need to supply a filename manually.
 
 FILE FORMAT
-    By default, your configuration file is split up on the first white space
-    it finds. Subsequent whitespace is preserved intact - quotes are not
-    needed. For example, this:
+    By default, your configuration file is split up on the first white space it finds. Subsequent whitespace
+    is preserved intact - quotes are not needed. For example, this:
 
         company     Hardwood Flooring Supplies, Inc.
 
@@ -60,8 +64,8 @@ FILE FORMAT
 
         $cf{company} = 'Hardwood Flooring Supplies, Inc.';
 
-    Of course, you can use the delimiter argument to change the delimiter to
-    anything you want, perhaps to read Bourne shell style files:
+    Of course, you can use the delimiter argument to change the delimiter to anything you want, perhaps to
+    read Bourne shell style files:
 
         %cf = fastconfig($file, '=');
 
@@ -70,12 +74,11 @@ FILE FORMAT
         system=Eunice
         kernel=sortof
 
-    Each configuration directive is read sequentially and placed in the
-    hash. If the same directive is present multiple times, the last one will
-    override any earlier ones.
+    Each configuration directive is read sequentially and placed in the hash. If the same directive is present
+    multiple times, the last one will override any earlier ones.
 
-    In addition, you can reuse previously-defined variables by preceding
-    them with a "$" sign. Hopefully this seems logical to you.
+    In addition, you can reuse previously-defined variables by preceding them with a `$' sign. Hopefully this
+    seems logical to you.
 
         owner       Bill Johnson
         company     $owner and Company, Ltd.
@@ -85,42 +88,55 @@ FILE FORMAT
         price       \$5.00
         streetname  "Guido \"The Enforcer\" Scorcese"
 
-    Variable names are case-sentitive! These are three different variables:
+    Unlike previous versions of this module, variable names are case-insensitive. In this situation, the last
+    setting of `ORACLE_HOME' will win:
 
         oracle_home /oracle
         Oracle_Home /oracle/orahome1
         ORACLE_HOME /oracle/OraHome2
 
-    Speaking of which, an extra nicety is that this module will setup
-    environment variables for any ALLCAPS variables you define. So, the
-    above ORACLE_HOME variable will automatically be stuck into %ENV.
+    However, variables are converted to lowercase before being returned from `fastconfig()', meaning you would
+    access this as:
 
-    Finally, if called in a scalar context, then variables will be imported
-    directly into the "main::" namespace, just like if you had defined them
-    yourself:
+        print $cf{oracle_home};     # /oracle/OraHome2
+
+    Speaking of which, an extra nicety is that this module will setup environment variables for any ALLCAPS
+    variables you define. So, the above `ORACLE_HOME' variable will automatically be stuck into %ENV. But you
+    would still access it in your program as `oracle_home'. This may seem confusing at first, but once you use
+    it, I think you'll find it makes sense.
+
+    Finally, if called in a scalar context, then variables will be imported directly into the `main::'
+    namespace, just like if you had defined them yourself:
 
         use Config::Fast;
 
-        fastconfig;
+        fastconfig('web.conf');
 
         print "The web address is: $website\n";     # website from conf
 
-    Generally, this is regarded as dangerous and bad form, so I would
-    strongly advise using this form only in throwaway scripts, or not at
-    all.
+    Generally, this is regarded as dangerous and bad form, so I would strongly advise using this form only in
+    throwaway scripts, or not at all.
 
 NOTES
-    The key "mtime" is magical and cannot be used as a variable name in your
-    config file.
+    Variables starting with a leading underscore are considered reserved and should not be used in your config
+    file, unless you enjoy painfully mysterious behavior.
+
+    There are some global variables that you can use to customize certain aspects of this module. If you
+    really want to tweak it, read through the source, then do something like:
+
+        use Config::Fast;
+        $Config::Fast::SOMESETTING = 'whatever';
+        %cf = fastconfig;
+
+    For a much more full-featured config module, check out `Config::ApacheFormat'. It can handle Apache style
+    blocks, array values, etc, etc. This one is supposed to be fast and easy.
 
 VERSION
-    $Id: Fast.pm,v 1.3 2003/04/05 02:06:28 nwiger Exp $
+    $Id: Fast.pm,v 1.4 2003/11/03 21:42:12 nwiger Exp $
 
 AUTHOR
-    Copyright (c) 2002-2003 Nathan Wiger <nate@sun.com>. All Rights
-    Reserved.
+    Copyright (c) 2002-2003 Nathan Wiger <nate@sun.com>. All Rights Reserved.
 
-    This module is free software; you may copy this under the terms of the
-    GNU General Public License, or the Artistic License, copies of which
-    should have accompanied your Perl kit.
+    This module is free software; you may copy this under the terms of the GNU General Public License, or the
+    Artistic License, copies of which should have accompanied your Perl kit.
 

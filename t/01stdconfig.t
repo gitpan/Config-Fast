@@ -1,14 +1,14 @@
-#!/usr/bin/perl
+#!/usr/bin/perl -I.. -w
 
 # 01stdconfig - read the first config file, which is "standard"
 
 use strict;
 use Test;
 
-# use a BEGIN block so we print our plan before CGI::FormBuilder is loaded
+# use a BEGIN block so we print our plan before module is loaded
 BEGIN { plan tests => 10 }
 
-my $conf = "config.cf1";
+my $conf = "t/config.cf1";
 
 use Config::Fast;
 
@@ -22,9 +22,9 @@ ok($cf{website}, 'http://nate.wiger.org');
 ok($cf{date}, "today don't you know");
 ok($cf{time}, "today don't you know 11:31");
 ok($cf{animals}, 'Rhino, Giraffe, Magical Elephant');
-ok($cf{mixedCase}, 'no$problemo');
+ok($cf{mixedcase}, 'no$problemo');
 
 my @n = keys %cf;
 my $n = @n;
-ok($n, 10);
+ok($n, 12);
 

@@ -1,19 +1,19 @@
-#!/usr/bin/perl
+#!/usr/bin/perl -I.. -w
 
 # 04importvars - import vars into main:: from first config file
 
 use Test;
 
-# use a BEGIN block so we print our plan before CGI::FormBuilder is loaded
+# use a BEGIN block so we print our plan before module is loaded
 BEGIN { plan tests => 9 }
 
-my $conf = "config.cf1";
+my $conf = "t/config.cf1";
 
 use Config::Fast;
 
 # damn perl warnings piss me off
 $one = $two = $three = $support = $website = $date
-= $time = $animals = $mixedCase = undef;
+     = $time = $animals = $mixedcase = undef;
 
 fastconfig($conf);
 
@@ -25,5 +25,5 @@ ok($website, 'http://nate.wiger.org');
 ok($date, "today don't you know");
 ok($time, "today don't you know 11:31");
 ok($animals, 'Rhino, Giraffe, Magical Elephant');
-ok($mixedCase, 'no$problemo');
+ok($mixedcase, 'no$problemo');
 
