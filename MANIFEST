@@ -1,0 +1,11 @@
+Fast.pm
+Makefile.PL
+README
+Changes
+MANIFEST
+t/01stdconfig.t
+t/00makeconfigs.t
+t/02bournesque.t
+t/03megafancy.t
+t/04importvars.t
+t/99cleanconfigs.t
