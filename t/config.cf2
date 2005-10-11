@@ -16,11 +16,11 @@ Oracle_Data=/oracle/orahome1/oradata
 
 # skip this $oracle_user comment
 
-spacing=    pre-spaces
-trailing=end-spaces     
+spacing='    pre-spaces'
+trailing="end-spaces     "
 
 reuse=$spacing
 
 # damn French knights
-if you say so=   No! Now go away!   
+if you say so="   No! Now go away!   "
 

@@ -1,4 +1,4 @@
-#!/usr/bin/perl -I.. -w
+#!/usr/bin/perl -I. -I.. -w
 
 # 01bournesque - read the second config file, which is Bourne style
 
@@ -8,7 +8,9 @@ use Test;
 # use a BEGIN block so we print our plan before module is loaded
 BEGIN { plan tests => 12 }
 
-my $conf = "t/config.cf2";
+use FindBin;
+
+my $conf = "$FindBin::Bin/config.cf2";
 
 use Config::Fast;
 

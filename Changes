@@ -1,15 +1,21 @@
 
 RCS file: /home/nwiger/perlmod/lib/Config/RCS/Fast.pm,v
 Working file: /home/nwiger/perlmod/lib/Config/Fast.pm
-head: 1.4
+head: 1.5
 branch:
 locks: strict
 access list:
 symbolic names:
 keyword substitution: kv
-total revisions: 4;	selected revisions: 4
+total revisions: 5;	selected revisions: 5
 description:
 Config::Fast - extremely fast configuration file reader parser
+----------------------------
+revision 1.5
+date: 2005/10/11 23:46:22;  author: nwiger;  state: Exp;  lines: +145 -84
+Rewrote entire parsing methodology to use an embedded eval in a
+safe compartment, in order to get Perl's quote-parsing correct.
+Updated documentation appropriately.
 ----------------------------
 revision 1.4
 date: 2003/11/03 21:42:12;  author: nwiger;  state: Exp;  lines: +146 -85

@@ -1,7 +1,5 @@
-Fast.pm
+lib/Config/Fast.pm
 Makefile.PL
-Changes
-MANIFEST
 README
 t/01stdconfig.t
 t/05multiple.t
@@ -11,3 +9,5 @@ t/04importvars.t
 t/config.cf1
 t/config.cf2
 t/config.cf3
+Changes
+MANIFEST

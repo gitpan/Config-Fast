@@ -1,10 +1,10 @@
-#
+  #
 # fancy variable names and misc edge cases
 #
 
 Why-Not     "Hooka' Brutha' Up!!"
 
-999+disembodied+heads   "who doesn't love late\-night horror flix?"
+999+disembodied+heads   "who doesn't love late\-night \\\- horror flix?"
 
 ===?===?===     If this works, it's official, I\\\'m a PIMP with mad \$\$
 
@@ -12,3 +12,12 @@ Why-Not     "Hooka' Brutha' Up!!"
 
 $3.50       Damn you loch ness monster!
 
+Edge_Case   Set1
+
+Set2        $edge_case
+
+passwd      `cat /etc/passwd`
+
+evalEvil    '"Hi there"'
+
+REGEX       '$4|[4-9]*(a|b)?\.raw$|\.tiger$'

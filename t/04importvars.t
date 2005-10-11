@@ -1,4 +1,4 @@
-#!/usr/bin/perl -I.. -w
+#!/usr/bin/perl -I. -I.. -w
 
 # 04importvars - import vars into main:: from first config file
 
@@ -7,7 +7,9 @@ use Test;
 # use a BEGIN block so we print our plan before module is loaded
 BEGIN { plan tests => 9 }
 
-my $conf = "t/config.cf1";
+use FindBin;
+
+my $conf = "$FindBin::Bin/config.cf1";
 
 use Config::Fast;
 
