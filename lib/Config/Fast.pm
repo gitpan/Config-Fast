@@ -25,12 +25,12 @@ Config::Fast - extremely fast configuration file parser
 use Carp;
 use strict;
 use vars qw($VERSION %READCONF @EXPORT $MTIME $ALLCAPS $SOURCE
-            $DELIM $ENVCAPS $KEEPCASE %CONVERT);
+            $DELIM $ENVCAPS $KEEPCASE $ARRAYS %CONVERT);
 
 use Exporter;
 use base 'Exporter';
 @EXPORT   = qw(fastconfig);
-$VERSION  = do { my @r=(q$Revision: 1.5 $=~/\d+/g); sprintf "%d."."%02d"x$#r,@r };
+$VERSION  = do { my @r=(q$Revision: 1.6 $=~/\d+/g); sprintf "%d."."%02d"x$#r,@r };
 %READCONF = ();
 
 #
@@ -39,6 +39,7 @@ $VERSION  = do { my @r=(q$Revision: 1.5 $=~/\d+/g); sprintf "%d."."%02d"x$#r,@r 
 $DELIM    = '\s+';          # default delimiter
 $KEEPCASE = 0;              # preserve MixedCase variables?
 $ENVCAPS  = 1;              # setenv ALLCAPS variables?
+$ARRAYS   = 0;              # set var[0] as array elements?
 %CONVERT  = (               # convert these values appropriately
     'true|on|yes'  => 1,
     'false|off|no' => 0,
@@ -87,8 +88,9 @@ sub fastconfig (;$$) {
                 next if /^\s*$/ || /^\s*#/; chomp;
 
                 my($key, $val) = split /$delim/, $_, 2;
-                my $env = $key =~ /^[A-Z0-9_]+$/;
-                $key = lc $key unless $Config::Fast::KEEPCASE;
+
+                # See if our var is ALLCAPS to setenv it
+                my $env = $key =~ /^[A-Z0-9_]+(\[\d+\])?$/ ? $key : undef;
 
                 $val =~ s/^\s*(["']?)(.*)\1\s*$/$2/g;
                 my $q = $1 || '"';                          # save quote
@@ -96,19 +98,29 @@ sub fastconfig (;$$) {
                     $val =~ s/([^a-zA-Z0-9_\$\\'"])/\\$1/g  # escape nasty (sneaky?) chars
                 }
                 $val = qq{$q$val$q};                        # add quotes back in
-                my $estr = q($Config::Fast::READCONF{$file}{$key} = $$key = ) . $val;
-                eval $estr;
-                warn "Error: \$$key = $val\n       $@" if $@;
 
                 # Now check for "on/off" or "true/false"
                 for my $pat (keys %CONVERT) {
                     $val = $CONVERT{$pat} if $val =~ /^($pat)$/i;
                 }
 
-                # Save it in our conf and also keep temporarily
-                #$READCONF{$file}{$key} = $tmp{$key} = $val;
-                push @{$Config::Fast::READCONF{$file}{$Config::Fast::ALLCAPS}}, $key
-                    if $Config::Fast::ENVCAPS && $env;
+                # Convert MixedCaseGook to $mixedcasegook?
+                my $pkey = $Config::Fast::KEEPCASE ? $key : lc($key);
+
+                my $ekey;   # eval key
+                if ($Config::Fast::ARRAYS && $pkey =~ s/\[(\d+)\]$//) {
+                    $ekey = q($Config::Fast::READCONF{$file}{$pkey}[$1] = ${$key}[$1] = );
+                } else {
+                    $ekey = q($Config::Fast::READCONF{$file}{$pkey} = $$key = );
+                }
+                eval $ekey . '$tmp = ' . $val;
+                warn "Error: \$$key = $val\n       $@" if $@;
+
+                # Push it as an env var if so requested
+                if ($Config::Fast::ENVCAPS && $env) {
+                    push @{$Config::Fast::READCONF{$file}{$Config::Fast::ALLCAPS}},
+                         [ $env => $tmp ];
+                }
             }
             $Config::Fast::READCONF{$file}{$Config::Fast::MTIME} = $mtime;
             close CF;
@@ -120,7 +132,7 @@ sub fastconfig (;$$) {
     # ALLCAPS vars go into env, do this each time so that
     # calls to fastconfig() always reset the environment.
     for (@{$READCONF{$file}{$ALLCAPS}}) {
-        $ENV{uc($_)} = $READCONF{$file}{$_};
+        $ENV{$_->[0]} = $_->[1];
     }
 
     if (wantarray) {
@@ -294,6 +306,25 @@ all variables are converted to lowercase.
 If set to 0, then any C<ALLCAPS> variables are I<not> set as environment
 variables.
 
+=item %ARRAYS
+
+If set to 1, then settings that look like shell arrays are converted into
+a Perl array. For example, this config block:
+
+    MATRIX[0]="a b c"
+    MATRIX[1]="d e f"
+    MATRIX[2]="g h i"
+
+Would be returned as:
+
+    $conf{matrix} = [ 'a b c', 'd e f', 'g h i' ];
+
+Instead of the default:
+
+    $conf{matrix[0]} = 'a b c';
+    $conf{matrix[1]} = 'd e f';
+    $conf{matrix[2]} = 'g h i';
+
 =item %CONVERT
 
 This is a hash of regex patterns specifying values that should be converted
@@ -319,7 +350,7 @@ supposed to be fast and easy.
 
 =head1 VERSION
 
-$Id: Fast.pm,v 1.5 2005/10/11 23:46:22 nwiger Exp $
+$Id: Fast.pm,v 1.5 2005/10/11 23:46:22 nwiger Exp nwiger $
 
 =head1 AUTHOR
 

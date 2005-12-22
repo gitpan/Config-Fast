@@ -14,7 +14,7 @@ $3.50       Damn you loch ness monster!
 
 Edge_Case   Set1
 
-Set2        $edge_case
+Set2        $Edge_Case
 
 passwd      `cat /etc/passwd`
 

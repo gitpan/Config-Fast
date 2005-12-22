@@ -158,6 +158,24 @@ VARIABLES
         If set to 0, then any "ALLCAPS" variables are *not* set as
         environment variables.
 
+    %ARRAYS
+        If set to 1, then settings that look like shell arrays are converted
+        into a Perl array. For example, this config block:
+
+            MATRIX[0]="a b c"
+            MATRIX[1]="d e f"
+            MATRIX[2]="g h i"
+
+        Would be returned as:
+
+            $conf{matrix} = [ 'a b c', 'd e f', 'g h i' ];
+
+        Instead of the default:
+
+            $conf{matrix[0]} = 'a b c';
+            $conf{matrix[1]} = 'd e f';
+            $conf{matrix[2]} = 'g h i';
+
     %CONVERT
         This is a hash of regex patterns specifying values that should be
         converted before being returned. By default, values that look like
@@ -179,7 +197,7 @@ NOTES
     etc, etc. This one is supposed to be fast and easy.
 
 VERSION
-    $Id: Fast.pm,v 1.5 2005/10/11 23:46:22 nwiger Exp $
+    $Id: Fast.pm,v 1.5 2005/10/11 23:46:22 nwiger Exp nwiger $
 
 AUTHOR
     Copyright (c) 2002-2005 Nathan Wiger <nate@wiger.org>. All Rights
