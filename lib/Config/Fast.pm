@@ -24,33 +24,40 @@ Config::Fast - extremely fast configuration file parser
 
 use Carp;
 use strict;
-use vars qw($VERSION %READCONF @EXPORT $MTIME $ALLCAPS $SOURCE
-            $DELIM $ENVCAPS $KEEPCASE $ARRAYS %CONVERT);
 
 use Exporter;
 use base 'Exporter';
-@EXPORT   = qw(fastconfig);
-$VERSION  = do { my @r=(q$Revision: 1.6 $=~/\d+/g); sprintf "%d."."%02d"x$#r,@r };
-%READCONF = ();
+our @EXPORT   = qw(fastconfig);
+our $VERSION  = do { my @r=(q$Revision: 1.7 $=~/\d+/g); sprintf "%d."."%02d"x$#r,@r };
+our %READCONF = ();
 
 #
 # Global settings - can override with $Config::Fast::PARAM = 'value';
 #
-$DELIM    = '\s+';          # default delimiter
-$KEEPCASE = 0;              # preserve MixedCase variables?
-$ENVCAPS  = 1;              # setenv ALLCAPS variables?
-$ARRAYS   = 0;              # set var[0] as array elements?
-%CONVERT  = (               # convert these values appropriately
+our $DELIM    = '\s+';          # default delimiter
+our $KEEPCASE = 0;              # preserve MixedCase variables?
+our $ENVCAPS  = 1;              # setenv ALLCAPS variables?
+our $ARRAYS   = 0;              # set var[0] as array elements?
+our @DEFINE   = ();             # predefines of key=val
+our %CONVERT  = (               # convert these values appropriately
     'true|on|yes'  => 1,
     'false|off|no' => 0,
 );
 
+# Aliases for prettiness
+*Arrays   = \$ARRAYS;
+*Define   = \@DEFINE;
+*Delim    = \$DELIM;
+*Convert  = \%CONVERT;
+*EnvCaps  = \$ENVCAPS;
+*KeepCase = \$KEEPCASE;
+
 #
 # Internal variables; are overridable, but undocumented
 #
-$MTIME    = '_mtime';
-$ALLCAPS  = '_allcaps';
-$SOURCE   = '_source';
+our $MTIME    = '_mtime';
+our $ALLCAPS  = '_allcaps';
+our $SOURCE   = '_source';
 
 sub fastconfig (;$$) {
     my $file  = shift;
@@ -65,68 +72,99 @@ sub fastconfig (;$$) {
         $file = File::Spec->catfile($dir, '..', 'etc', "$prog.conf")
     }
 
-    croak "fastconfig: Invalid configuration file '$file'"
-        unless -f $file && -r _;
-
-    my %tmp = ();     # to reuse vars
-    my $mtime = -M _;
-    if (! $READCONF{$file}{$MTIME} || $mtime < $READCONF{$file}{$MTIME}) {
-        $READCONF{$file}{$ALLCAPS} ||= [];
-        $READCONF{$file}{$SOURCE} = 'file';
-        (my $srcpkg = $SOURCE) =~ s/\W+//g;
-        {
-            #
-            # We now parse variables by eval'ing them inline. This gets us
-            # the same quoting conventions Perl uses implicitly.
-            #
-            package Config::Fast::Parser;
-            no strict;
-            use Carp;
-
-            open CF, "<$file" or croak "fastconfig: Can't open $file: $!";
-            while (<CF>) {
-                next if /^\s*$/ || /^\s*#/; chomp;
-
-                my($key, $val) = split /$delim/, $_, 2;
-
-                # See if our var is ALLCAPS to setenv it
-                my $env = $key =~ /^[A-Z0-9_]+(\[\d+\])?$/ ? $key : undef;
-
-                $val =~ s/^\s*(["']?)(.*)\1\s*$/$2/g;
-                my $q = $1 || '"';                          # save quote
-                unless ($q eq "'") {
-                    $val =~ s/([^a-zA-Z0-9_\$\\'"])/\\$1/g  # escape nasty (sneaky?) chars
-                }
-                $val = qq{$q$val$q};                        # add quotes back in
-
-                # Now check for "on/off" or "true/false"
-                for my $pat (keys %CONVERT) {
-                    $val = $CONVERT{$pat} if $val =~ /^($pat)$/i;
-                }
-
-                # Convert MixedCaseGook to $mixedcasegook?
-                my $pkey = $Config::Fast::KEEPCASE ? $key : lc($key);
-
-                my $ekey;   # eval key
-                if ($Config::Fast::ARRAYS && $pkey =~ s/\[(\d+)\]$//) {
-                    $ekey = q($Config::Fast::READCONF{$file}{$pkey}[$1] = ${$key}[$1] = );
-                } else {
-                    $ekey = q($Config::Fast::READCONF{$file}{$pkey} = $$key = );
-                }
-                eval $ekey . '$tmp = ' . $val;
-                warn "Error: \$$key = $val\n       $@" if $@;
-
-                # Push it as an env var if so requested
-                if ($Config::Fast::ENVCAPS && $env) {
-                    push @{$Config::Fast::READCONF{$file}{$Config::Fast::ALLCAPS}},
-                         [ $env => $tmp ];
-                }
-            }
-            $Config::Fast::READCONF{$file}{$Config::Fast::MTIME} = $mtime;
-            close CF;
-        }   # block
+    # Allow $file, \$file, or \@file
+    my @file;
+    my $mtime = 0;
+    if (my $ref = ref $file) {
+        if ($ref eq 'SCALAR') {
+            @file = $$file; 
+            $READCONF{$file}{$SOURCE} = 'scalar';
+        } elsif ($ref eq 'ARRAY') {
+            @file = @$file; 
+            $READCONF{$file}{$SOURCE} = 'array';
+        } else {
+            croak "fastconfig: Invalid data type '$ref' for file arg";
+        }
     } else {
-        $READCONF{$file}{$SOURCE} = 'cache';
+        # Flat file; open if newer than cache
+        croak "fastconfig: Invalid configuration file '$file'"
+            unless -f $file && -r _;
+        $mtime = -M _;
+        if (! $READCONF{$file}{$MTIME} || $mtime < $READCONF{$file}{$MTIME}) {
+            open CF, "<$file" or croak "fastconfig: Can't open $file: $!";
+            @file = <CF>;
+            close CF;
+            $READCONF{$file}{$SOURCE} = 'file';
+        }
+    }
+
+    if (@file) {
+        $READCONF{$file}{$ALLCAPS} ||= [];
+
+        # Generate unique package name to isolate vars
+        my $srcpkg = join '::', __PACKAGE__, 'Parser' . time() . $$;
+        
+        eval "{ package $srcpkg; " . <<'EndOfParser';
+
+        #
+        # We now parse variables by eval'ing them inline. This gets us
+        # the same quoting conventions Perl uses implicitly.
+        #
+        no strict;
+        use Carp;
+
+        # Predefine anything in @DEFINE by unshifting onto @file (kludge)
+        my @lines = @Config::Fast::DEFINE;
+
+        for (@file) {
+            next if /^\s*$/ || /^\s*#/; chomp;
+            push @lines, [split /$delim/, $_, 2];
+        }
+
+        for (@lines) {
+            my($key, $val) = @$_;
+
+            # See if our var is ALLCAPS to setenv it
+            my $env = $key =~ /^[A-Z0-9_]+(\[\d+\])?$/ ? $key : undef;
+
+            $val =~ s/^\s*(["']?)(.*)\1\s*$/$2/g;
+            my $q = $1 || '"';                          # save quote
+            unless ($q eq "'") {
+                $val =~ s/([^a-zA-Z0-9_\$\\'"])/\\$1/g  # escape nasty (sneaky?) chars
+            }
+            $val = qq{$q$val$q};                        # add quotes back in
+
+            # Now check for "on/off" or "true/false"
+            for my $pat (keys %Config::Fast::CONVERT) {
+                $val = $Config::Fast::CONVERT{$pat} if $val =~ /^($pat)$/i;
+            }
+
+            # Convert MixedCaseGook to $mixedcasegook?
+            my $pkey = $Config::Fast::KEEPCASE ? $key : lc($key);
+
+            # Can only allow substitutions on RegularKeys, not weird+val:stuff
+            my $tkey = $key =~ /^[a-zA-Z]\w*$/ ? $key : 'junk';
+            my $ekey;
+            if ($Config::Fast::ARRAYS && $pkey =~ s/\[(\d+)\]$//) {
+                $ekey = q($Config::Fast::READCONF{$file}{$pkey}[$1] = ${$tkey}[$1] = );
+            } else {
+                $ekey = q($Config::Fast::READCONF{$file}{$pkey} = $$tkey = );
+            }
+            eval $ekey . '$tmp = ' . $val;
+            warn "fastconfig: Parse error:\$$key = $val: $@" if $@;
+
+            # Push it as an env var if so requested
+            if ($Config::Fast::ENVCAPS && $env) {
+                push @{$Config::Fast::READCONF{$file}{$Config::Fast::ALLCAPS}},
+                     [ $env => $tmp ];
+            }
+        }
+        $Config::Fast::READCONF{$file}{$Config::Fast::MTIME} = $mtime;
+    }   # eval block
+EndOfParser
+
+} else {
+    $READCONF{$file}{$SOURCE} = 'cache';
     }
 
     # ALLCAPS vars go into env, do this each time so that
@@ -141,7 +179,7 @@ sub fastconfig (;$$) {
         # import vars into main namespace
         no strict 'refs';
         while (my($k,$v) = each %{$READCONF{$file}}) {
-            next if $k =~ /^_/;
+            next if $k =~ /^_/ || $k =~ /\W/;
             eval {
                 *{"main::$k"} = \$v;
             };
@@ -284,29 +322,30 @@ There are several global variables that can be set which affect how
 C<fastconfig()> works. These can be set in the following way:
 
     use Config::Fast;
-    $Config::Fast::VARIABLE = 'value';
+    $Config::Fast::Variable = 'value';
     %cf = fastconfig;
 
 The recognized variables are:
 
 =over
 
-=item $DELIM
+=item $Delim
 
 The config file delimiter to use. This can also be specified as the second
 argument to C<fastconfig()>. This defaults to C<\s+>.
 
-=item $KEEPCASE
+=item $KeepCase
 
 If set to 1, then C<MixedCaseVariables> are maintained intact. By default,
 all variables are converted to lowercase.
 
-=item $ENVCAPS
+=item $EnvCaps
 
-If set to 0, then any C<ALLCAPS> variables are I<not> set as environment
-variables.
+If set to 1 (the default), then any C<ALLCAPS> variables are set as
+environment variables. They are still returned in lowercase from 
+C<fastconfig()>.
 
-=item %ARRAYS
+=item $Arrays
 
 If set to 1, then settings that look like shell arrays are converted into
 a Perl array. For example, this config block:
@@ -325,7 +364,33 @@ Instead of the default:
     $conf{matrix[1]} = 'd e f';
     $conf{matrix[2]} = 'g h i';
 
-=item %CONVERT
+=item @Define
+
+This allows you to pre-define var=val pairs that are set before the parsing
+of the config file. I introduced this feature to solve a specific problem:
+Executable relocation. In my config files, I put definitions such as:
+
+    # Parsed by Config::Fast and sourced by shell scripts
+    BIN="$ROOT/bin"
+    SBIN="$ROOT/sbin"
+    LIB="$ROOT/lib"
+    ETC="$ROOT/etc"
+
+With the goal that this file would be equally usable by both Perl and
+shell scripts.
+
+When parsed by C<Config::Fast>, I pre-define C<ROOT> to C<pwd> before
+calling C<fastconfig()>:
+
+    use Cwd;
+    my $pwd = cwd;
+    @Config::Fast::Define = ([ROOT => $pwd]);
+    my %conf = fastconfig("$pwd/conf/core.conf");
+
+Each element of 
+
+
+=item %Convert
 
 This is a hash of regex patterns specifying values that should be converted
 before being returned. By default, values that look like C<true|on|yes>
@@ -350,7 +415,7 @@ supposed to be fast and easy.
 
 =head1 VERSION
 
-$Id: Fast.pm,v 1.5 2005/10/11 23:46:22 nwiger Exp nwiger $
+$Id: Fast.pm,v 1.7 2006/03/06 22:18:41 nwiger Exp $
 
 =head1 AUTHOR
 

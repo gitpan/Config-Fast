@@ -14,6 +14,7 @@ my $conf = "$FindBin::Bin/config.cf1";
 my $conf2 = "$FindBin::Bin/config.cf3";
 
 use Config::Fast;
+@Config::Fast::DEFINE = [no => 'yes'];
 
 my %cf = fastconfig($conf);
 
@@ -31,7 +32,7 @@ ok($cf{_source}, 'file');
 
 my @n = keys %cf;
 my $n = @n;
-ok($n, 13);
+ok($n, 15);
 
 undef %ENV;
 
@@ -44,9 +45,10 @@ ok($cf{'1|2|3'}, "Ain't nobody that should fix ta' use \"this\"");
 ok($cf{'$3.50'}, 'Damn you loch ness monster!');
 ok($cf{_source}, 'file');
 
+# This count will include @DEFINE from above
 @n = keys %cf;
 $n = @n;
-ok($n, 13);
+ok($n, 14);
 
 # back to the first one
 %cf = fastconfig($conf);
@@ -67,5 +69,5 @@ ok($cf{_source}, 'cache');
 
 @n = keys %cf;
 $n = @n;
-ok($n, 13);
+ok($n, 15);
 

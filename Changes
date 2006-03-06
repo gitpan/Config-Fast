@@ -1,15 +1,26 @@
 
 RCS file: /home/nwiger/perlmod/lib/Config/RCS/Fast.pm,v
 Working file: /home/nwiger/perlmod/lib/Config/Fast.pm
-head: 1.5
+head: 1.7
 branch:
 locks: strict
 access list:
 symbolic names:
 keyword substitution: kv
-total revisions: 5;	selected revisions: 5
+total revisions: 7;	selected revisions: 7
 description:
 Config::Fast - extremely fast configuration file reader parser
+----------------------------
+revision 1.7
+date: 2006/03/06 22:18:41;  author: nwiger;  state: Exp;  lines: +140 -76
+- changed defines to MixedCase for DataDumper consistency
+- added @Define array that's pre-parsed
+- wrapped everything inside an eval'ed package for safety
+----------------------------
+revision 1.6
+date: 2006/02/26 18:52:03;  author: nwiger;  state: Exp;  lines: +47 -15
+- fixed internal $Var substitution errors
+- Added $ARRAYS setting to parse bourne array[n] syntax
 ----------------------------
 revision 1.5
 date: 2005/10/11 23:46:22;  author: nwiger;  state: Exp;  lines: +145 -84

@@ -141,24 +141,25 @@ VARIABLES
     "fastconfig()" works. These can be set in the following way:
 
         use Config::Fast;
-        $Config::Fast::VARIABLE = 'value';
+        $Config::Fast::Variable = 'value';
         %cf = fastconfig;
 
     The recognized variables are:
 
-    $DELIM
+    $Delim
         The config file delimiter to use. This can also be specified as the
         second argument to "fastconfig()". This defaults to "\s+".
 
-    $KEEPCASE
+    $KeepCase
         If set to 1, then "MixedCaseVariables" are maintained intact. By
         default, all variables are converted to lowercase.
 
-    $ENVCAPS
-        If set to 0, then any "ALLCAPS" variables are *not* set as
-        environment variables.
+    $EnvCaps
+        If set to 1 (the default), then any "ALLCAPS" variables are set as
+        environment variables. They are still returned in lowercase from
+        "fastconfig()".
 
-    %ARRAYS
+    $Arrays
         If set to 1, then settings that look like shell arrays are converted
         into a Perl array. For example, this config block:
 
@@ -176,7 +177,32 @@ VARIABLES
             $conf{matrix[1]} = 'd e f';
             $conf{matrix[2]} = 'g h i';
 
-    %CONVERT
+    @Define
+        This allows you to pre-define var=val pairs that are set before the
+        parsing of the config file. I introduced this feature to solve a
+        specific problem: Executable relocation. In my config files, I put
+        definitions such as:
+
+            # Parsed by Config::Fast and sourced by shell scripts
+            BIN="$ROOT/bin"
+            SBIN="$ROOT/sbin"
+            LIB="$ROOT/lib"
+            ETC="$ROOT/etc"
+
+        With the goal that this file would be equally usable by both Perl
+        and shell scripts.
+
+        When parsed by "Config::Fast", I pre-define "ROOT" to "pwd" before
+        calling "fastconfig()":
+
+            use Cwd;
+            my $pwd = cwd;
+            @Config::Fast::Define = ([ROOT => $pwd]);
+            my %conf = fastconfig("$pwd/conf/core.conf");
+
+        Each element of
+
+    %Convert
         This is a hash of regex patterns specifying values that should be
         converted before being returned. By default, values that look like
         "true|on|yes" will be converted to 1, and values that match
@@ -197,7 +223,7 @@ NOTES
     etc, etc. This one is supposed to be fast and easy.
 
 VERSION
-    $Id: Fast.pm,v 1.5 2005/10/11 23:46:22 nwiger Exp nwiger $
+    $Id: Fast.pm,v 1.7 2006/03/06 22:18:41 nwiger Exp $
 
 AUTHOR
     Copyright (c) 2002-2005 Nathan Wiger <nate@wiger.org>. All Rights

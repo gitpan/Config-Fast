@@ -5,7 +5,7 @@
 use Test;
 
 # use a BEGIN block so we print our plan before module is loaded
-BEGIN { plan tests => 9 }
+BEGIN { plan tests => 12 }
 
 use FindBin;
 
@@ -15,7 +15,13 @@ use Config::Fast;
 
 # damn perl warnings piss me off
 $one = $two = $three = $support = $website = $date
-     = $time = $animals = $mixedcase = undef;
+     = $time = $animals = $mixedcase = $predef = $yes = $no = undef;
+
+# Try to define stuff
+@Config::Fast::DEFINE = ([predef => 'B'],
+                         [animals => 'overridden'],
+                         [no => 'yes'],
+                        );
 
 fastconfig($conf);
 
@@ -28,4 +34,7 @@ ok($date, "today don't you know");
 ok($time, "today don't you know 11:31");
 ok($animals, 'Rhino, Giraffe, Magical Elephant');
 ok($mixedcase, 'no$problemo');
+ok($predef, 'B');
+ok($yes, 'yes');
+ok($no, 'yes');
 
